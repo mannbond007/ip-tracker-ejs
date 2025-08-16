@@ -28,6 +28,24 @@ function isPrivateIP(ip) {
   );
 }
 
+// Helper: Get client IP safely
+function getClientIp(req) {
+  let ip =
+    req.headers["x-forwarded-for"]?.split(",")[0] ||
+    req.connection?.remoteAddress ||
+    req.socket?.remoteAddress ||
+    (req.connection?.socket ? req.connection.socket.remoteAddress : null);
+
+  if (!ip) return "8.8.8.8"; // fallback
+
+  // Handle IPv6 ::ffff: prefix
+  if (ip.startsWith("::ffff:")) {
+    ip = ip.substring(7);
+  }
+
+  return ip;
+}
+
 // Fetch IP details
 async function getIPDetails(ip) {
   const response = await axios.get(`http://ip-api.com/json/${ip}`);
@@ -37,13 +55,7 @@ async function getIPDetails(ip) {
 // Home route
 app.get("/", async (req, res) => {
   try {
-    let ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
-
-    if (ip === "::1" || ip.startsWith("::ffff:127")) {
-      ip = "8.8.8.8"; // local dev fallback
-    } else if (ip.includes(",")) {
-      ip = ip.split(",")[0];
-    }
+    let ip = getClientIp(req);
 
     let visitorData;
     if (isPrivateIP(ip)) {
@@ -57,9 +69,9 @@ app.get("/", async (req, res) => {
     } else {
       visitorData = await getIPDetails(ip);
 
-      // Check if this IP already exists before inserting
+      // Save to DB if not exists
       const existing = await Search.findOne({ ip: visitorData.query });
-      if (!existing) {
+      if (!existing && visitorData.status === "success") {
         await Search.create({
           ip: visitorData.query,
           country: visitorData.country,
@@ -73,7 +85,11 @@ app.get("/", async (req, res) => {
     res.render("index", { visitorData, history });
   } catch (error) {
     console.error("Error fetching visitor IP info:", error.message);
-    res.send("Error fetching visitor IP info");
+    res.render("index", {
+      visitorData: null,
+      history: [],
+      error: "Unable to fetch visitor IP info",
+    });
   }
 });
 
@@ -95,12 +111,14 @@ app.post("/track", async (req, res) => {
 
   try {
     const data = await getIPDetails(ip);
-    await Search.create({
-      ip: data.query,
-      country: data.country,
-      city: data.city,
-      isp: data.isp,
-    });
+    if (data.status === "success") {
+      await Search.create({
+        ip: data.query,
+        country: data.country,
+        city: data.city,
+        isp: data.isp,
+      });
+    }
     res.render("result", { data });
   } catch (error) {
     console.error("Error fetching IP info:", error.message);
@@ -111,16 +129,24 @@ app.post("/track", async (req, res) => {
 // Test mode
 app.get("/test", async (req, res) => {
   try {
-    const testIPs = ["8.8.8.8", "1.1.1.1", "208.80.154.224", "142.250.72.14", "151.101.1.69"];
+    const testIPs = [
+      "8.8.8.8",
+      "1.1.1.1",
+      "208.80.154.224",
+      "142.250.72.14",
+      "151.101.1.69",
+    ];
     const randomIP = testIPs[Math.floor(Math.random() * testIPs.length)];
     const data = await getIPDetails(randomIP);
 
-    await Search.create({
-      ip: data.query,
-      country: data.country,
-      city: data.city,
-      isp: data.isp,
-    });
+    if (data.status === "success") {
+      await Search.create({
+        ip: data.query,
+        country: data.country,
+        city: data.city,
+        isp: data.isp,
+      });
+    }
 
     res.render("result", { data });
   } catch (error) {
