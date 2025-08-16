@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>IP Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" type="image/png" href="/favicon.png"> 
+</head>
+<body class="h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white flex items-center justify-center overflow-hidden">
+  <div class="w-full max-w-3xl bg-gray-900 rounded-2xl shadow-xl p-4 sm:p-6 border border-gray-700 flex flex-col max-h-[95vh] mx-2">
+
+    <!-- Header -->
+    <h1 class="text-3xl font-extrabold text-center bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-4">
+      🌐 IP Address Tracker
+    </h1>
+
+    <!-- Scrollable content area -->
+    <div class="overflow-y-auto pr-1 sm:pr-2 flex-1 space-y-6">
+
+      <!-- Visitor IP Info -->
+      <div class="bg-gray-800 rounded-xl p-4 shadow-md">
+        <h2 class="text-lg font-semibold text-blue-400 mb-3 border border-purple-700/60 px-3 py-1 rounded-2xl inline-block">
+          Your IP Information
+        </h2>
+        <p><span class="font-semibold text-gray-300">IP:</span> <%= visitorData.query %></p>
+        <p><span class="font-semibold text-gray-300">Country:</span> <%= visitorData.country %></p>
+        <p><span class="font-semibold text-gray-300">City:</span> <%= visitorData.city %></p>
+        <p><span class="font-semibold text-gray-300">ISP:</span> <%= visitorData.isp %></p>
+        <% if (visitorData.note) { %>
+          <p class="text-red-500 font-semibold mt-2"><%= visitorData.note %></p>
+        <% } %>
+      </div>
+
+      <!-- Track Another IP -->
+      <div class="bg-gray-800 rounded-xl p-4 shadow-md">
+        <h2 class="text-lg font-semibold text-purple-400 mb-3 border border-purple-700/60 px-3 py-1 rounded-2xl inline-block">
+          Track Another IP
+        </h2>
+        <form action="/track" method="POST" class="flex flex-col sm:flex-row gap-3">
+          <input type="text" name="ip" placeholder="Enter IP address" required
+            class="flex-1 px-4 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500">
+          <button type="submit"
+            class="w-full sm:w-auto px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition">
+            Track
+          </button>
+        </form>
+
+        <!-- Test Mode -->
+        <form action="/test" method="GET" class="mt-4">
+          <button type="submit"
+            class="w-full sm:w-auto px-6 py-2 bg-gradient-to-r from-red-500 to-green-500 rounded-lg font-semibold hover:from-green-600 hover:to-teal-600 transition">
+            Run Test Mode (Random IP)
+          </button>
+        </form>
+      </div>
+
+      <!-- Recent Searches -->
+      <div class="bg-gray-800 rounded-xl p-4 shadow-md">
+        <h2 class="text-lg font-semibold text-green-400 mb-3">Recent Searches</h2>
+        <ul class="space-y-2">
+          <% history.forEach(item => { %>
+            <li class="p-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+              <div>
+                <span class="font-semibold"><%= item.ip %></span> -
+                <%= item.country %>, <%= item.city %>
+                <span class="text-sm text-gray-400">(<%= item.isp %>)</span>
+              </div>
+              <form action="/delete-history" method="POST" onsubmit="return confirm('Delete this entry?');">
+                <input type="hidden" name="ip" value="<%= item.ip %>">
+                <button type="submit" 
+                  class="px-3 py-1 bg-gradient-to-r from-red-500 to-pink-600 rounded-lg font-semibold hover:from-red-600 hover:to-pink-700 transition text-sm">
+                  🗑
+                </button>
+              </form>
+            </li>
+          <% }) %>
+        </ul>
+
+        <% if (history.length > 0) { %>
+          <form action="/clear-history" method="POST" onsubmit="return confirm('Are you sure you want to clear all history?');" class="mt-4">
+            <button type="submit"
+              class="w-full px-4 py-2 bg-gradient-to-r from-red-500 to-pink-600 rounded-lg font-semibold hover:from-red-600 hover:to-pink-700 transition">
+              🗑 Clear All History
+            </button>
+          </form>
+        <% } %>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>
